@@ -286,9 +286,11 @@ class _DetailPageState extends State<DetailPage> {
                       child: Row(
                         children: [
                           if (c.detail!.cover != null)
-                            if (constraints.maxWidth > 600) ...[
+                            // ★ Rune 补丁 4：原来只有窗口宽度 > 600 才画封面，
+                            // 窄窗口直接没图。改成窄窗口画小图。
+                            ...[
                               Container(
-                                width: 230,
+                                width: constraints.maxWidth > 600 ? 230 : 140,
                                 height: double.infinity,
                                 clipBehavior: Clip.antiAlias,
                                 decoration: BoxDecoration(
@@ -360,6 +362,29 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                     ),
                     const SizedBox(height: 30),
+                    // ★ Rune 补丁 3：简介提到目录之前，先看简介再翻章节目录
+                    Obx(
+                      () {
+                        if (c.detail?.desc == null) {
+                          return const SizedBox();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: CardTile(
+                            title: "detail.overview".i18n,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: SelectableText(
+                                c.tmdbDetail?.overview ?? c.detail?.desc ?? '',
+                                style: const TextStyle(
+                                  height: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     if (c.detail?.episodes != null) const DetailEpisodes(),
                     const SizedBox(height: 16),
                     Obx(
@@ -478,28 +503,7 @@ class _DetailPageState extends State<DetailPage> {
                         );
                       },
                     ),
-                    Obx(
-                      () {
-                        if (c.detail?.desc == null) {
-                          return const SizedBox();
-                        }
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: CardTile(
-                            title: "detail.overview".i18n,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: SelectableText(
-                                c.tmdbDetail?.overview ?? c.detail?.desc ?? '',
-                                style: const TextStyle(
-                                  height: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                    // ★ 补丁 3 已把简介移到目录之上，这里不再重复渲染
                     Obx(
                       () {
                         if (c.tmdbDetail == null) {

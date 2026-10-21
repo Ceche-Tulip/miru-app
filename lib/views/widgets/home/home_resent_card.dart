@@ -37,7 +37,10 @@ class _HomeRecentCardState extends State<HomeRecentCard> {
   final contextAttachKey = GlobalKey();
   // 主要颜色
   Color? primaryColor;
-  late bool noCover = widget.history.cover == null;
+  // ★ Rune 补丁 6：历史记录里的 cover 可能是空字符串（不是 null），
+  // 原来只判 null，于是会去加载 "" —— 表现为占位符 + "failed to load image"。
+  late bool noCover =
+      widget.history.cover == null || widget.history.cover!.isEmpty;
   late final provider = ExtendedNetworkImageProvider(
     widget.history.cover!,
     cache: true,
