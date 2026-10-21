@@ -69,9 +69,13 @@ class _NovelReaderContentState extends State<NovelReaderContent> {
                 if (index == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 20),
-                    child: Text(
-                      _c.title + _c.playList[_c.playIndex].name,
-                      style: const TextStyle(fontSize: 26),
+                    // ★ Rune 补丁 2：原来用 _c.playIndex（构造时固定的死值），
+                    // 翻到下一章时大标题不会更新。改成响应式的 index 并包一层 Obx。
+                    child: Obx(
+                      () => Text(
+                        _c.title + _c.playList[_c.index.value].name,
+                        style: const TextStyle(fontSize: 26),
+                      ),
                     ),
                   );
                 }
