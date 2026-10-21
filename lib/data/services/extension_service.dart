@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_js/extensions/fetch.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Response; // 与 dio 的 Response 同名，这里显式隐藏 get 的
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 import 'package:miru_app/data/services/extension_jscore_plugin.dart';
@@ -89,15 +89,39 @@ class ExtensionService {
       );
 
       try {
-        final res = await dio.request<String>(
-          url,
-          data: requestBody,
-          queryParameters: args[1]['queryParameters'] ?? {},
-          options: Options(
-            headers: headers,
-            method: method,
-          ),
-        );
+        // ★ Rune 补丁 1：dart:io 只对 GET/HEAD 自动跟随 301/302，
+        // POST 拿到的 302 会直接落进 validateStatus 被当成异常抛出，
+        // 于是「POST 搜索 -> 302 跳转」型站点（如书海阁）永远搜不了。
+        // 这里手动跟随重定向，行为对齐浏览器：302/303 之后改用 GET 再请求。
+        var currentUrl = url;
+        var currentMethod = method.toString().toLowerCase();
+        var currentData = requestBody;
+        var currentQuery =
+            Map<String, dynamic>.from(args[1]['queryParameters'] ?? {});
+        late Response<String> res;
+        for (var hop = 0; hop < 5; hop++) {
+          res = await dio.request<String>(
+            currentUrl,
+            data: currentMethod == 'get' ? null : currentData,
+            queryParameters: currentQuery,
+            options: Options(
+              headers: headers,
+              method: currentMethod,
+              followRedirects: false,
+              validateStatus: (status) => status != null && status < 400,
+            ),
+          );
+          final code = res.statusCode ?? 0;
+          final location = res.headers.value('location');
+          if (code >= 300 && code < 400 && location != null) {
+            currentUrl = Uri.parse(currentUrl).resolve(location).toString();
+            currentMethod = 'get';
+            currentData = null;
+            currentQuery = {};
+            continue;
+          }
+          break;
+        }
         log.requestHeaders = res.requestOptions.headers;
         log.responseBody = res.data;
         log.responseHeaders = res.headers.map.map(
