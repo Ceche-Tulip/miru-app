@@ -20,9 +20,15 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   late SearchPageController c;
 
+  // ★ Rune 补丁 5：原来输入框在每次 build 时 new 一个 TextEditingController，
+  // 中文输入法的候选/组合状态会被重置，于是删字重打会出现 "da'meng'zhuda'meng'z" 这种重复。
+  // 控制器必须在 State 里只创建一次。
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
     c = Get.put(SearchPageController());
+    _searchController = TextEditingController(text: c.search.value);
     c.isPageOpen = true;
     if (c.needRefresh) {
       c.getRuntime();
@@ -33,6 +39,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     c.isPageOpen = false;
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -41,9 +48,7 @@ class _SearchPageState extends State<SearchPage> {
       length: 4,
       child: Scaffold(
         appBar: SearchAppBar(
-          textEditingController: TextEditingController(
-            text: c.search.value,
-          ),
+          textEditingController: _searchController,
           onChanged: (value) {
             if (value.isEmpty) {
               c.search.value = '';
@@ -219,8 +224,7 @@ class _SearchPageState extends State<SearchPage> {
                       SizedBox(
                         width: 300,
                         child: fluent.TextBox(
-                          controller:
-                              TextEditingController(text: c.search.value),
+                          controller: _searchController,
                           placeholder: "search.hint-text".i18n,
                           suffix: suffix,
                           suffixMode: fluent.OverlayVisibilityMode.editing,
